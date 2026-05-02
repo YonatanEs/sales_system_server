@@ -1,8 +1,8 @@
 package com.example.security;
 
 import com.example.controllerRest.LogOutController;
-import com.example.dao.UsuarioRepository;
-import com.example.dao.UsuariosDao;
+import com.example.Repository.UsuarioRepository;
+import com.example.Repository.UsuariosDao;
 import com.example.domain.UserAuth;
 import com.example.domain.Usuario;
 import com.example.exceptions.InvalidCredentialsException;

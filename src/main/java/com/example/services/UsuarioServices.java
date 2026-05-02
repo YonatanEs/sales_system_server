@@ -5,7 +5,7 @@ import com.example.DTO.ModificarUsuario;
 import com.example.DTO.RegistrarUsuario;
 import com.example.DTO.Tabla_paginacion;
 import com.example.DTO.Usuario_tab;
-import com.example.dao.UsuarioRepository;
+import com.example.Repository.UsuarioRepository;
 import com.example.domain.Usuario;
 import com.example.security.CustomUserDetails;
 import java.util.List;

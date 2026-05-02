@@ -1,6 +1,6 @@
 package com.example.security;
 
-import com.example.dao.UsuariosDao;
+import com.example.Repository.UsuariosDao;
 import com.example.domain.UserAuth;
 import com.example.exceptions.InvalidCredentialsException;
 import com.example.exceptions.UserInactiveException;

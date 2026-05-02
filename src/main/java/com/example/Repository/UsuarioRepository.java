@@ -1,4 +1,4 @@
-package com.example.dao;
+package com.example.Repository;
 
 import com.example.domain.Usuario;
 import java.util.List;

@@ -3,7 +3,7 @@ package com.example.services;
 import com.example.DTO.DtoResponse;
 import com.example.DTO.ModificarCliente;
 import com.example.DTO.RegistrarCliente;
-import com.example.dao.ClienteRepository;
+import com.example.Repository.ClienteRepository;
 import com.example.domain.Cliente;
 import java.util.List;
 import java.util.Optional;
@@ -64,7 +64,7 @@ public class ClienteServices {
     }
 
     public Cliente clienteSeleccionado(Long id) {
-        return clienteRepository.findById(id).get();
+        return clienteRepository.findById(id).orElse(null);
     }
 
     public DtoResponse inactivarCliente(Long id) {
