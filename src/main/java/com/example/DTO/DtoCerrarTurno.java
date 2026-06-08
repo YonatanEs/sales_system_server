@@ -1,5 +1,6 @@
 package com.example.DTO;
 
+import com.example.domain.Usuario;
 import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,12 +11,10 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+public class DtoCerrarTurno {
 
-public class RegistrarProducto {
-    private String codigo;
-    private String descripcion;
-    private BigDecimal precioVenta;
-    private Long id_proveedor;
-    private Long id_medida;
-    private Long id_categoria;
+    private Long idTurno;
+    private Usuario  userCierre;
+    private BigDecimal arqueo;
+
 }

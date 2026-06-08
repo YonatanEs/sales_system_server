@@ -28,12 +28,7 @@ public class CustomUserDetailsService implements UserDetailsService{
         if(!usuarios.isActivo()){
             throw new UserInactiveException("El usuario está inactivo");
         }
-        return new CustomUserDetails(
-                usuarios.getId(),
-                usuarios.getUsername(),
-                usuarios.getPassword(),
-                usuarios.isActivo(),
-                Collections.singletonList(new SimpleGrantedAuthority(usuarios.getPermisos())));
+        return new CustomUserDetails(usuarios);
     }
     
 }

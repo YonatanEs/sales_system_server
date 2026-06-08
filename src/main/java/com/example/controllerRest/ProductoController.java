@@ -3,6 +3,7 @@ package com.example.controllerRest;
 import com.example.DTO.DtoAddStock;
 import com.example.DTO.DtoResponse;
 import com.example.DTO.DtoResponseOb;
+import com.example.DTO.ModificarProducto;
 import com.example.DTO.Producto_tab;
 import com.example.DTO.RegistrarProducto;
 import com.example.DTO.ValorRequestPag;
@@ -44,9 +45,9 @@ public class ProductoController {
         return ResponseEntity.ok(response);
     }
     
-    @PostMapping("/añadirstock")
-    public ResponseEntity<DtoResponse> addStock(@RequestBody DtoAddStock addStock){
-        DtoResponse response = productoServices.addStock(addStock);
+    @PostMapping("/modificar")
+    public ResponseEntity<DtoResponse> modificarProducto(@RequestBody ModificarProducto request){
+        DtoResponse response = productoServices.modificarProducto(request);
         if(!response.isSuccess()){
             return ResponseEntity.badRequest().body(response);
         }
@@ -62,5 +63,16 @@ public class ProductoController {
     public List<String> listarSugerencias(){
         return productoServices.listarSugerencias();
     }
+    
+    @PostMapping("/inactivar")
+   public ResponseEntity<DtoResponse> inactivarProducto(@RequestBody Long id){
+       
+        DtoResponse response = productoServices.inactivarProducto(id);
+        
+        if(!response.isSuccess()){
+            return ResponseEntity.badRequest().body(response);
+        }
+        return ResponseEntity.ok(response); 
+   } 
     
 }

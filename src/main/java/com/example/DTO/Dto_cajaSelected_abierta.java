@@ -1,7 +1,6 @@
 package com.example.DTO;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -10,10 +9,10 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class DtoAuthResponse {
-    
-    private String token;
-    private String id;
-    private Usuario_tab userAuth;
-    
+public class Dto_cajaSelected_abierta {
+
+    private boolean abierta;
+    private String message;
+    private Long idTurno;
+
 }

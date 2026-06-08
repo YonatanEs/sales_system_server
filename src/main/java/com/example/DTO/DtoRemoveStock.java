@@ -11,10 +11,11 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class DtoAddStock {
-    private Long id;
-    private LocalDate fechaEntrada;
+public class DtoRemoveStock {
+    
+    private Long idProducto;
+    private LocalDate fechaSalida;
     private BigDecimal stock;
-    private BigDecimal precioCompra;
     private String concepto;
+    
 }

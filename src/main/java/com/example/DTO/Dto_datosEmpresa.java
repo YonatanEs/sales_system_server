@@ -5,17 +5,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Getter
-@Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Usuario_tab {
+@Getter
+@Setter
+public class Dto_datosEmpresa {
     
-    private Long id;
     private String nombre;
+    private String nit;
     private String telefono;
-    private String username;
-    private String permisos;
-    private String estado;
-    
+    private String direccion;
+    private String slogan;
+    private String logo;
 }

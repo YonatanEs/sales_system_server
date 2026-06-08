@@ -1,9 +1,9 @@
 package com.example.services;
 
 import com.example.DTO.DtoResponse;
+import com.example.DTO.Dto_cambiarcontraseña;
 import com.example.DTO.ModificarUsuario;
 import com.example.DTO.RegistrarUsuario;
-import com.example.DTO.Tabla_paginacion;
 import com.example.DTO.Usuario_tab;
 import com.example.Repository.UsuarioRepository;
 import com.example.domain.Usuario;
@@ -11,10 +11,6 @@ import com.example.security.CustomUserDetails;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -38,14 +34,14 @@ public class UsuarioServices {
 
         return usuarios.stream()
                 .map(u -> new Usuario_tab(
-                u.getId().intValue(),
+                u.getId(),
                 u.getNombre(),
                 u.getTelefono(),
                 u.getUsername(),
                 u.getPermisos(),
                 u.getEstado()
         ))
-                .collect(Collectors.toList());
+        .collect(Collectors.toList());
     }
 
     public DtoResponse registrarUsuario(RegistrarUsuario request) {
@@ -110,7 +106,7 @@ public class UsuarioServices {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         return new Usuario_tab(
-                usuario.getId().intValue(),
+                usuario.getId(),
                 usuario.getNombre(),
                 usuario.getTelefono(),
                 usuario.getUsername(),
@@ -136,5 +132,20 @@ public class UsuarioServices {
             usuarioRepository.save(usuario);
             return new DtoResponse(true, "¡Usuario Activado correctamente!");
         }
+    }
+    
+    public DtoResponse cambiaContraseña(Dto_cambiarcontraseña contraseña){
+        Usuario usuario = usuarioRepository.findById(contraseña.getIdUserAuth()).orElse(null);
+        if(usuario==null){
+            return new DtoResponse(false, "Ha ocurrido un error al tratar de cambiar la contraseña");
+        }
+        
+        if(!usuario.getPassword().equals(contraseña.getPasswordActual())){
+            return new DtoResponse(false, "La contraseña introducida no coincide con la contraseña actual");
+        }
+        
+        usuario.setPassword(contraseña.getPasswordNuevo());
+        usuarioRepository.save(usuario);
+        return new DtoResponse(true, "Contraseña actualizada correctamente");
     }
 }

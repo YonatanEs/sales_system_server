@@ -16,13 +16,15 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     boolean existsByCodigo(String codigo);
 
-    @Modifying
-    @Query("UPDATE Producto p SET p.stock = p.stock + :cantidad WHERE p.id = :id")
-    void aumentarStock(@Param("id") Long id, @Param("cantidad") Double cantidad);
+    //@Modifying
+    //@Query("UPDATE Producto p SET p.stock = p.stock + :cantidad WHERE p.id = :id")
+    //void aumentarStock(@Param("id") Long id, @Param("cantidad") Double cantidad);
 
     @Query(value = "SELECT codigo FROM productos "
             + "UNION "
             + "SELECT descripcion FROM productos ",
             nativeQuery = true) 
     List<String> listarSugerencias();
+
+    boolean existsByCodigoAndIdNot(String codigo, Long id);
 }

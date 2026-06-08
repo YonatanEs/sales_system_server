@@ -11,7 +11,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 
-public class RegistrarProducto {
+public class ModificarProducto {
+    private Long id;
     private String codigo;
     private String descripcion;
     private BigDecimal precioVenta;

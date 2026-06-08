@@ -1,6 +1,7 @@
 package com.example.controllerRest;
 
 import com.example.DTO.DtoResponse;
+import com.example.DTO.Dto_cambiarcontraseña;
 import com.example.DTO.ModificarUsuario;
 import com.example.DTO.RegistrarUsuario;
 import com.example.DTO.Tabla_paginacion;
@@ -70,4 +71,16 @@ public class UsuarioController {
    public Usuario_tab usuarioSeleccionado(@RequestBody Long id){
        return usuarioServices.usuarioSeleccionado(id);
    }
+   
+   @PostMapping("/cambiarContraseña")
+   public ResponseEntity<DtoResponse> cambiarContraseña(@RequestBody Dto_cambiarcontraseña contraseña){
+       
+        DtoResponse response = usuarioServices.cambiaContraseña(contraseña);
+        
+        if(!response.isSuccess()){
+            return ResponseEntity.badRequest().body(response);
+        }
+        return ResponseEntity.ok(response); 
+   }
+   
 }

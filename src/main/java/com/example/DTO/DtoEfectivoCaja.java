@@ -1,7 +1,7 @@
 package com.example.DTO;
 
+import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -10,10 +10,11 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class DtoAuthResponse {
+public class DtoEfectivoCaja {
     
-    private String token;
-    private String id;
-    private Usuario_tab userAuth;
+    private Long idTurno;
+    private String tipoMovimiento;
+    private BigDecimal importe;
+    private String concepto;
     
 }

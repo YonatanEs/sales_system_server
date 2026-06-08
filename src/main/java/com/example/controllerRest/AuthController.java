@@ -2,10 +2,13 @@ package com.example.controllerRest;
 
 import com.example.DTO.DtoAuthRequest;
 import com.example.DTO.DtoAuthResponse;
+import com.example.DTO.Usuario_tab;
+import com.example.Repository.UsuarioRepository;
+import com.example.domain.UserAuth;
+import com.example.domain.Usuario;
 import com.example.security.CustomUserDetails;
 import com.example.security.CustomUserDetailsService;
 import com.example.security.JwtTokenUtil;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +17,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,6 +35,9 @@ public class AuthController {
     @Autowired
     private CustomUserDetailsService userDetailsService;
     
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+    
     @PostMapping("/login")
     public ResponseEntity<?> createAuthenticationToken(@RequestBody DtoAuthRequest authRequest) throws AuthenticationException{
         Authentication authentication = authManager
@@ -48,12 +53,16 @@ public class AuthController {
                 .map(role -> role.startsWith("ROLE_") ? role.substring(5) : role)
                 .orElse("Empleado");
         
-        String idUser = userDetails.getId().toString();
+        Long idUser = userDetails.getId();
         
-        return ResponseEntity.ok(new DtoAuthResponse(token, roll, idUser));
+        
+        
+        UserAuth usAu = userDetails.getUserAuth();
+        
+        Usuario_tab us = new Usuario_tab(usAu.getId(), usAu.getNombre(), usAu.getTelefono(),
+                usAu.getUsername(), usAu.getPermisos(), usAu.getEstado());
+        return ResponseEntity.ok(new DtoAuthResponse(token, String.valueOf(idUser), us));
     }
-    
-    
 }
 
 

@@ -1,7 +1,6 @@
 package com.example.DTO;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -10,10 +9,13 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class DtoAuthResponse {
+public class Dto_userAuth {
     
-    private String token;
-    private String id;
-    private Usuario_tab userAuth;
-    
+    private Long id;
+    private String nombre;
+    private String telefono;
+    private String username;
+    private String permisos;
+    private String estado;
+
 }

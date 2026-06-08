@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.example.domain.Cliente;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
@@ -65,8 +66,13 @@ public class ClienteController {
    } 
    
    @PostMapping("/ClienteSeleccionado")
-   public Cliente usuarioSeleccionado(@RequestBody Long id){
+   public Cliente clienteSeleccionado(@RequestBody Long id){
        return clienteServices.clienteSeleccionado(id);
    }
+   
+   @GetMapping("/listarSugerencias")
+    public List<String> listarSugerencias(){
+        return clienteServices.listarSugerencias();
+    }
     
 }

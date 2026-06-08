@@ -85,4 +85,8 @@ public class ClienteServices {
             return new DtoResponse(true, "¡Cliente Activado correctamente!");
         }
     }
+    
+    public List<String> listarSugerencias(){
+        return clienteRepository.listarSugerencias();
+    }
 }

@@ -15,6 +15,7 @@ public class CustomUserDetails implements UserDetails{
     private String password;
     private boolean active;
     private Collection<? extends GrantedAuthority> authorities;
+    private UserAuth userAuth;
 
     public CustomUserDetails(Long id, String username, String password, boolean active, Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
@@ -32,6 +33,7 @@ public class CustomUserDetails implements UserDetails{
         this.authorities = Collections.singletonList(
                 new SimpleGrantedAuthority(usuario.getPermisos()) // ejemplo: "Administrador" o "Empleado"
         );
+        this.userAuth=usuario;
     }
 
     public Long getId(){
@@ -71,6 +73,14 @@ public class CustomUserDetails implements UserDetails{
     @Override
     public boolean isEnabled() {
         return active;
+    }
+
+    public UserAuth getUserAuth() {
+        return userAuth;
+    }
+
+    public void setUserAuth(UserAuth userAuth) {
+        this.userAuth = userAuth;
     }
     
 }
