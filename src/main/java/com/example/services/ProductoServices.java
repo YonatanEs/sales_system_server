@@ -1,6 +1,7 @@
 package com.example.services;
 
 import com.example.DTO.DtoAddStock;
+import com.example.DTO.DtoItemSugerenciaProductos;
 import com.example.DTO.DtoResponse;
 import com.example.DTO.DtoResponseOb;
 import com.example.DTO.ModificarProducto;
@@ -20,6 +21,7 @@ import com.example.domain.Producto;
 import com.example.domain.Proveedor;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -182,6 +184,18 @@ public class ProductoServices {
 
     public List<String> listarSugerencias() {
         return productoRepository.listarSugerencias();
+    }
+    
+    public List<DtoItemSugerenciaProductos> listarSugerenciasOb() {
+        List<DtoItemSugerenciaProductos> codigos = productoRepository.obtenerSugerenciasCodigo();
+        List<DtoItemSugerenciaProductos> descripcion = productoRepository.obtenerSugerenciasDescripcion();
+        
+        List<DtoItemSugerenciaProductos> total = new ArrayList<>(codigos.size() + descripcion.size());
+        
+        total.addAll(codigos);
+        total.addAll(descripcion);
+        
+        return total;
     }
 
     public DtoResponse inactivarProducto(Long id) {

@@ -1,6 +1,7 @@
 package com.example.controllerRest;
 
 import com.example.DTO.DtoAddStock;
+import com.example.DTO.DtoItemSugerenciaProductos;
 import com.example.DTO.DtoResponse;
 import com.example.DTO.DtoResponseOb;
 import com.example.DTO.ModificarProducto;
@@ -62,6 +63,11 @@ public class ProductoController {
     @GetMapping("/listarSugerencias")
     public List<String> listarSugerencias(){
         return productoServices.listarSugerencias();
+    }
+    
+    @GetMapping("/listarSugerenciasOb")
+    public List<DtoItemSugerenciaProductos> listarSugerenciasOb(){
+        return productoServices.listarSugerenciasOb();
     }
     
     @PostMapping("/inactivar")

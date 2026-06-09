@@ -1,5 +1,6 @@
 package com.example.Repository;
 
+import com.example.DTO.DtoItemSugerenciaProductos;
 import com.example.domain.Producto;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -19,12 +20,17 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     //@Modifying
     //@Query("UPDATE Producto p SET p.stock = p.stock + :cantidad WHERE p.id = :id")
     //void aumentarStock(@Param("id") Long id, @Param("cantidad") Double cantidad);
-
     @Query(value = "SELECT codigo FROM productos "
             + "UNION "
             + "SELECT descripcion FROM productos ",
-            nativeQuery = true) 
+            nativeQuery = true)
     List<String> listarSugerencias();
 
     boolean existsByCodigoAndIdNot(String codigo, Long id);
+
+    @Query("SELECT new com.example.DTO.DtoItemSugerenciaProductos(p.id, p.codigo) FROM Producto p")
+    List<DtoItemSugerenciaProductos> obtenerSugerenciasCodigo();
+
+    @Query("SELECT new com.example.DTO.DtoItemSugerenciaProductos(p.id, p.descripcion) FROM Producto p")
+    List<DtoItemSugerenciaProductos> obtenerSugerenciasDescripcion();
 }
