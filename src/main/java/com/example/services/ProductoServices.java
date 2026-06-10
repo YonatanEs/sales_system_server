@@ -131,7 +131,7 @@ public class ProductoServices {
         p.setCodigo(modificar.getCodigo());
         p.setDescripcion(modificar.getDescripcion());
         p.setPrecioVenta(modificar.getPrecioVenta());
-        
+
         p.setProveedor(proveedorRepository.findById(modificar.getId_proveedor())
                 .orElse(null));
         p.setMedida(medidaRepository.findById(modificar.getId_medida())

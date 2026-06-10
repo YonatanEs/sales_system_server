@@ -28,9 +28,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     boolean existsByCodigoAndIdNot(String codigo, Long id);
 
-    @Query("SELECT new com.example.DTO.DtoItemSugerenciaProductos(p.id, p.codigo) FROM Producto p")
+    @Query("SELECT new com.example.DTO.DtoItemSugerenciaProductos(p.id, p.codigo) FROM Producto p WHERE p.estado = 'Activo'")
     List<DtoItemSugerenciaProductos> obtenerSugerenciasCodigo();
 
-    @Query("SELECT new com.example.DTO.DtoItemSugerenciaProductos(p.id, p.descripcion) FROM Producto p")
+    @Query("SELECT new com.example.DTO.DtoItemSugerenciaProductos(p.id, p.descripcion) FROM Producto p WHERE p.estado = 'Activo'")
     List<DtoItemSugerenciaProductos> obtenerSugerenciasDescripcion();
 }
