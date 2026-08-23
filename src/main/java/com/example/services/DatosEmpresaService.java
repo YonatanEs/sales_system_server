@@ -23,7 +23,7 @@ public class DatosEmpresaService {
     @Autowired
     private DatosEmpresaRepository datosRepository;
 
-    @Value("${storage.location}")
+    @Value("${storage.location.logos}")
     private String storageLocation;
 
     public DtoResponse modificarDatosEmpresa(Dto_datosEmpresa empresa, MultipartFile logo) {

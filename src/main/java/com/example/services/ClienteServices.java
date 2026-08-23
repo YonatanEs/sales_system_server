@@ -1,30 +1,53 @@
 package com.example.services;
 
+import com.example.DTO.DtoClientes;
 import com.example.DTO.DtoResponse;
 import com.example.DTO.ModificarCliente;
 import com.example.DTO.RegistrarCliente;
 import com.example.Repository.ClienteRepository;
 import com.example.domain.Cliente;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 
 @Service
 public class ClienteServices {
-    
+
+    @Autowired
     public ClienteRepository clienteRepository;
 
-    public ClienteServices(ClienteRepository clienteRepository) {
-        this.clienteRepository = clienteRepository;
+    @Autowired
+    public CreditoServices creditoServices;
+
+    public List<DtoClientes> listarClientes(String valor) {
+        if (valor.isEmpty()) {
+
+            return toDtoClientes(clienteRepository.findAllByOrderByEstadoAsc());
+        } else {
+            return toDtoClientes(clienteRepository
+                    .findByNombreContainingIgnoreCaseOrNitContainingIgnoreCase(valor, valor));
+        }
     }
 
-    public List<Cliente> listarClientes(String valor) {
-        if (valor.isEmpty()) {
-            return clienteRepository.findAllByOrderByEstadoAsc();
-        } else {
-            return clienteRepository.findByNombreContainingIgnoreCaseOrNitContainingIgnoreCase(valor, valor);
-        }
+    private List<DtoClientes> toDtoClientes(List<Cliente> clientes) {
+        List<Long> idsClientes = clientes.stream()
+                .map(Cliente::getId)
+                .toList();
+
+        Map<Long, String> estadosPorCliente = creditoServices.getEstadosClientes(idsClientes);
+        return clientes.stream()
+                .map(cliente -> new DtoClientes(
+                    cliente.getId(),
+                    cliente.getNombre(),
+                    cliente.getNit(),
+                    cliente.getTelefono(),
+                    cliente.getDireccion(),
+                    estadosPorCliente.getOrDefault(cliente.getId(), "AL DIA"),
+                    cliente.getEstado()
+                ))
+                .toList();
     }
 
     public DtoResponse registrarCliente(RegistrarCliente request) {
@@ -47,7 +70,7 @@ public class ClienteServices {
         if (clienteRepository.existsByNitAndIdNot(request.getNit(), request.getId())) {
             return new DtoResponse(false, "¡ya existe un cliente con el mismo NIT!");
         }
-        
+
         Optional<Cliente> clienteOpt = clienteRepository.findById(request.getId());
         if (clienteOpt.isEmpty()) {
             return new DtoResponse(false, "Seleccione una fila");
@@ -68,25 +91,26 @@ public class ClienteServices {
     }
 
     public DtoResponse inactivarCliente(Long id) {
-        Optional <Cliente> clienteOp = clienteRepository.findById(id);
-        
-        if(clienteOp.isEmpty()){
+        Optional<Cliente> clienteOp = clienteRepository.findById(id);
+
+        if (clienteOp.isEmpty()) {
             return new DtoResponse(false, "Selecciona una fila");
         }
         Cliente cliente = clienteOp.get();
-        
-        if(cliente.getEstado().equals("Activo")){
+
+        if (cliente.getEstado().equals("Activo")) {
             cliente.setEstado("Inactivo");
             clienteRepository.save(cliente);
             return new DtoResponse(true, "¡Cliente Inactivado correctamente!");
-        }else{
+        } else {
             cliente.setEstado("Activo");
             clienteRepository.save(cliente);
             return new DtoResponse(true, "¡Cliente Activado correctamente!");
         }
     }
-    
-    public List<String> listarSugerencias(){
+
+    public List<String> listarSugerencias() {
         return clienteRepository.listarSugerencias();
     }
+
 }

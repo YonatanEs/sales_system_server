@@ -1,5 +1,6 @@
 package com.example.controllerRest;
 
+import com.example.DTO.DtoClientes;
 import com.example.DTO.DtoResponse;
 import com.example.DTO.ModificarCliente;
 import com.example.DTO.RegistrarCliente;
@@ -25,9 +26,9 @@ public class ClienteController {
     }
     
     @PostMapping("/ListaClientes")
-   public List<Cliente> listarCliente(@RequestBody ValorRequest valor){
+   public List<DtoClientes> listarCliente(@RequestBody ValorRequest valor){
        
-       List<Cliente> listaCliente = clienteServices.listarClientes(valor.getValor());
+       List<DtoClientes> listaCliente = clienteServices.listarClientes(valor.getValor());
        
        return listaCliente;
    }

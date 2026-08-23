@@ -1,5 +1,6 @@
 package com.example.DTO;
 
+import com.example.domain.Usuario;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,4 +19,12 @@ public class Usuario_tab {
     private String permisos;
     private String estado;
     
+    public Usuario_tab(Usuario usuario){
+        this.id=usuario.getId();
+        this.nombre=usuario.getNombre();
+        this.telefono=usuario.getTelefono();
+        this.username=usuario.getUsername();
+        this.permisos=usuario.getPermisos();
+        this.estado=usuario.getEstado();
+    }
 }

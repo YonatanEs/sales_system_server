@@ -1,7 +1,7 @@
-package com.example.DTO;
+package com.example.DTO; 
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +14,7 @@ import lombok.Setter;
 public class DtoRemoveStock {
     
     private Long idProducto;
-    private LocalDate fechaSalida;
+    private LocalDateTime fechaSalida;
     private BigDecimal stock;
     private String concepto;
     

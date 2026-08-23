@@ -7,7 +7,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
 
@@ -32,6 +31,6 @@ public class MovimientoStock {
     private BigDecimal cantidad;
     private BigDecimal costo;
     private String concepto;
-    private LocalDate fecha;
+    private LocalDateTime fecha;
     
 }

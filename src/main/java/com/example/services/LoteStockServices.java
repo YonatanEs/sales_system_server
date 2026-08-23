@@ -23,6 +23,7 @@ public class LoteStockServices {
         this.movimientoServices = movimientoStockServices;
     }
 
+    @Transactional
     public DtoResponse añadirStock(DtoAddStock addStock) {
         LoteStock loteStock = new LoteStock();
         loteStock.setIdProducto(addStock.getId());

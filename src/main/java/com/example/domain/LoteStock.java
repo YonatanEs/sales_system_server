@@ -1,4 +1,4 @@
-package com.example.domain;
+package com.example.domain; 
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,7 +24,7 @@ public class LoteStock {
     private Long idProducto;
     
     @Column(name = "fecha_entrada")
-    private LocalDate fechaEntrada;
+    private LocalDateTime fechaEntrada;
     
     @Column(name = "precio_compra")
     private BigDecimal precioCompra;

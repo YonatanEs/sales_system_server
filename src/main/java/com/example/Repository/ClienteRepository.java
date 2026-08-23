@@ -2,6 +2,7 @@ package com.example.Repository;
 
 import com.example.domain.Cliente;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -18,4 +19,5 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long>{
             + "SELECT nit FROM clientes ",
             nativeQuery = true) 
     List<String> listarSugerencias();
+    Optional<Cliente> findByNit(String nit);
 }

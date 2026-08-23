@@ -45,7 +45,9 @@ public class Turno {
     private BigDecimal salidas = BigDecimal.ZERO;  
     private BigDecimal ventas = BigDecimal.ZERO;
     private BigDecimal ventaDepositos = BigDecimal.ZERO; 
-    private BigDecimal cobroCredito = BigDecimal.ZERO;
+    private BigDecimal ventaCredito = BigDecimal.ZERO;
+    private BigDecimal cobroCreditoEfectivo = BigDecimal.ZERO;
+    private BigDecimal cobroCreditoDeposito = BigDecimal.ZERO;
     private BigDecimal saldoFinal = BigDecimal.ZERO;
     private BigDecimal saldoFaltante = BigDecimal.ZERO;
     private BigDecimal saldoSobrante = BigDecimal.ZERO;
