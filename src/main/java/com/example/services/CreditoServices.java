@@ -37,6 +37,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
@@ -44,6 +46,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -393,11 +396,11 @@ public class CreditoServices {
     private Page<DtoItemHistorialabonos> toDtoHistorialAbono(Page<Abono> abonos) {
         return abonos.map(DtoItemHistorialabonos::new);
     }
-    
+
     public ResponseEntity<Resource> obtenerComprobanteDeposito(DtoId idAbono) {
         Abono abono = abonoRepository.findById(idAbono.getId()).orElse(null);
 
-        if (abono == null || abono.getUrlDeposito()== null) {
+        if (abono == null || abono.getUrlDeposito() == null) {
             return ResponseEntity.notFound().build();
         }
 
@@ -421,6 +424,28 @@ public class CreditoServices {
             }
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @Scheduled(cron = "0 0 2 * * ?") // todos los días a las 2 AM
+    public void jobActualizarCreditos() {
+        actualizarCreditosVencidos();
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void validarAlArrancar() {
+        actualizarCreditosVencidos(); // catch-up si el servidor estuvo apagado
+    }
+
+    public void actualizarCreditosVencidos() {
+        List<Credito> pendientes = creditoRepository.findByEstadoIgnoreCase("PENDIENTE");
+
+        for (Credito credito : pendientes) {
+            if ("PENDIENTE".equalsIgnoreCase(credito.getEstado())
+                    && credito.getPlazoPago().isBefore(LocalDate.now())) {
+                credito.setEstado("VENCIDO");
+                creditoRepository.save(credito);
+            }
         }
     }
 }

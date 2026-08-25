@@ -31,4 +31,7 @@ public interface CreditoRepository extends JpaRepository<Credito, Long> {
             + "WHERE c.estado <> 'PAGADO' AND c.idCliente IN :idsClientes "
             + "GROUP BY c.idCliente")
     List<Object[]> calcularEstadosClientes(@Param("idsClientes") List<Long> idsClientes);
+    
+    List<Credito> findByEstadoIgnoreCase(String estado);
+
 }

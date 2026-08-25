@@ -350,6 +350,9 @@ public class VentaServices {
                 filtro.getPage(),
                 filtro.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "fecha"));
+        
+        
+        System.out.println("Buscador: "+filtro.getContextoBusqueda() + " Busqueda "+filtro.getBusqueda());
 
         if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornit
                 && !filtro.getBusqueda().trim().isEmpty()) {
@@ -357,14 +360,15 @@ public class VentaServices {
             Page<Venta> listaventas = ventaRepository.findByNombreClienteContainingIgnoreCaseOrNitClienteContainingIgnoreCase(
                     filtro.getBusqueda(), filtro.getBusqueda(), pageable);
             return toDtoHistorial(listaventas);
-        } else if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha
-                && !filtro.getBusqueda().trim().isEmpty()) {
+        } else if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha) {
 
             LocalDate fecha = LocalDate.parse(filtro.getFecha(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
             LocalDateTime inicioDelDia = fecha.atStartOfDay();
             LocalDateTime finDelDia = fecha.atTime(LocalTime.MAX);
 
+            System.out.println("Se está ejecutando la accion de buscar por fecha: "+filtro.getFecha());
+            
             Page<Venta> listaventas = ventaRepository.findByFechaBetween(inicioDelDia, finDelDia, pageable);
             return toDtoHistorial(listaventas);
         } else if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo
@@ -374,7 +378,7 @@ public class VentaServices {
                     Long.valueOf(filtro.getBusqueda()), pageable);
             return toDtoHistorial(listaventas);
         } else {
-
+            System.out.println("Se ejecuto la excepcion");
             Page<Venta> listaventas = ventaRepository.findAll(pageable);
             return toDtoHistorial(listaventas);
         }
@@ -387,25 +391,24 @@ public class VentaServices {
                 Sort.by(Sort.Direction.DESC, "fecha"));
 
         if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornit
-                && filtro.getBusqueda().trim().isEmpty()) {
+                && !filtro.getBusqueda().trim().isEmpty()) {
                 
                 Page<Venta> listaventas = ventaRepository
                         .findByIdTurnoAndNombreClienteContainingIgnoreCaseOrIdTurnoAndNitClienteContainingIgnoreCase(
                                 Long.valueOf(filtro.getWinParametro()), filtro.getBusqueda(),
                                 Long.valueOf(filtro.getWinParametro()), filtro.getBusqueda(), pageable);
                 return toDtoHistorial(listaventas);
-        } else if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha
-                && filtro.getBusqueda().trim().isEmpty()) {
+        } else if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha) {
             LocalDate fecha = LocalDate.parse(filtro.getFecha(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
             LocalDateTime inicioDelDia = fecha.atStartOfDay();
             LocalDateTime finDelDia = fecha.atTime(LocalTime.MAX);
-
+            
             Page<Venta> listaventas = ventaRepository.findByIdTurnoAndFechaBetween(
                     Long.valueOf(filtro.getWinParametro()), inicioDelDia, finDelDia, pageable);
             return toDtoHistorial(listaventas);
         }if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo
-                && filtro.getBusqueda().trim().isEmpty()){
+                && !filtro.getBusqueda().trim().isEmpty()){
             Page<Venta> listaventas = ventaRepository.findByIdTurnoAndId(
                         Long.valueOf(filtro.getWinParametro()),
                         Long.valueOf(filtro.getBusqueda()), pageable);
@@ -423,18 +426,20 @@ public class VentaServices {
                 filtro.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "fecha"));
 
-        if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha
-                && !filtro.getBusqueda().trim().isEmpty()) {
+        if(filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha) {
             
             LocalDate fecha = LocalDate.parse(filtro.getFecha(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
             LocalDateTime inicioDelDia = fecha.atStartOfDay();
             LocalDateTime finDelDia = fecha.atTime(LocalTime.MAX);
 
+            System.out.println("Se está ejecutando la accion de buscar por fecha");
+            
             Page<Venta> listaventas = ventaRepository.findByNitClienteAndFechaBetween(
                     filtro.getWinParametro(), inicioDelDia, finDelDia, pageable);
             return toDtoHistorial(listaventas);
-        } else if(filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo){
+        } else if(filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo
+                && !filtro.getBusqueda().trim().isEmpty()){
             Page<Venta> listaventas = ventaRepository.findByNitClienteAndId(
                     filtro.getWinParametro(), Long.valueOf(filtro.getBusqueda()),pageable);
             return toDtoHistorial(listaventas);
