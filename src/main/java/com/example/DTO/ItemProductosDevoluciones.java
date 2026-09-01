@@ -15,11 +15,14 @@ import lombok.Setter;
 public class ItemProductosDevoluciones {
     
     private Long idProducto;
+    private Long idDetalleVenta;
     private String codigo;
     private String descripcion;
     private BigDecimal cantidad;
     private BigDecimal precio;
     private BigDecimal cantidadadevolver;
+    private DetallesVenta detallesVenta;
+    
     
     public ItemProductosDevoluciones(DetallesVenta productosvendidos){
         this.idProducto = productosvendidos.getIdProducto();
@@ -28,6 +31,7 @@ public class ItemProductosDevoluciones {
         this.cantidad = productosvendidos.getCantidad();
         this.precio = productosvendidos.getPrecioFinal();
         this.cantidadadevolver = BigDecimal.ZERO;
+        this.detallesVenta=productosvendidos;
     }
     
 }

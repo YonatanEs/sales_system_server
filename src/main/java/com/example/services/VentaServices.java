@@ -12,10 +12,12 @@ import com.example.DTO.DtoResponse;
 import com.example.DTO.DtoResponseOb;
 import com.example.DTO.DtoVentaCredito;
 import com.example.DTO.DtoVentaDeposito;
+import com.example.DTO.DtoVentaStock;
 import com.example.DTO.Producto_tab;
 import com.example.DTO.Usuario_tab;
 import com.example.Repository.ClienteRepository;
 import com.example.Repository.DetallesVentaRepository;
+import com.example.Repository.DetallesVenta_lotesRepository;
 import com.example.Repository.UsuarioRepository;
 import com.example.Repository.VentaRepository;
 import com.example.domain.Cliente;
@@ -37,6 +39,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
@@ -52,6 +55,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class VentaServices {
+
+    @Autowired
+    @Lazy
+    private VentaServices self;
 
     @Autowired
     private VentaRepository ventaRepository;
@@ -76,8 +83,11 @@ public class VentaServices {
 
     @Autowired
     private CreditoServices CreditoServices;
+    
+    @Autowired
+    private DetallesVenta_lotesRepository ddv_lotesRepository;
 
-    @Value("${storage.location.comprobantes.ventas}")
+    @Value("${storage.location.comprobantes.ventas}") 
     private String storageLocation;
 
     ///Registros para ventas al contado
@@ -89,7 +99,7 @@ public class VentaServices {
         }
 
         try {
-            return RegistrarVentaContadoTransactional(dtoregistrar);
+            return self.RegistrarVentaContadoTransactional(dtoregistrar);
         } catch (Exception e) {
             return new DtoResponseOb(false, e.getMessage(), null);
         }
@@ -162,12 +172,14 @@ public class VentaServices {
             detalles.setSubtotal(pedido.getSubtotal());
             detallesVentaRepository.save(detalles);
 
-            DtoResponse responseStock = stockService.retirarStockMultilote(
-                    new DtoRemoveStock(pedido.getId_producto(),
+            DtoResponse responseStock = stockService.ventaStockMultilote(
+                    new DtoVentaStock( 
+                            pedido.getId_producto(),
+                            idVenta,
                             LocalDateTime.now(),
                             pedido.getCantidad(),
                             concepto));
-
+            
             if (!responseStock.isSuccess()) {
                 return responseStock;
             }
@@ -180,7 +192,7 @@ public class VentaServices {
     public DtoResponseOb<DtoIdVenta> RegistrarVentaConDeposito(DtoVentaDeposito ventaDeposito, MultipartFile comprobante) {
 
         try {
-            return RegistrarVentaDepositoTransactional(ventaDeposito, comprobante);
+            return self.RegistrarVentaDepositoTransactional(ventaDeposito, comprobante);
         } catch (Exception e) {
             return new DtoResponseOb(false, e.getMessage(), null);
         }
@@ -225,6 +237,7 @@ public class VentaServices {
 
     private Venta registarVentaDeposito(Long idTurno, BigDecimal total, String nit,
             String nombre, Long idVendedor, String metodo, String NoDeposito, MultipartFile comprobante) throws IOException {
+        
         Venta venta = new Venta();
         venta.setIdTurno(idTurno);
         venta.setFecha(LocalDateTime.now());
@@ -234,11 +247,11 @@ public class VentaServices {
         venta.setVendedor(usuarioRepository.findById(idVendedor).orElse(null));
         venta.setMetodoPago(metodo);
         venta.setEstado("Activa");
-
+        
         if (comprobante != null && !comprobante.isEmpty()) {
             Path rutaCarpeta = Paths.get(storageLocation).toAbsolutePath().normalize();
             Files.createDirectories(rutaCarpeta);
-
+            
             // Generar nombre único para el comprobante
             String nombreOriginal = comprobante.getOriginalFilename();
             String nombreArchivoFinal = System.currentTimeMillis() + "_"
@@ -251,7 +264,7 @@ public class VentaServices {
             // Guardar la ruta/nombre en la BD
             venta.setUrlComprobante(nombreArchivoFinal);
             venta.setNoDeposito(NoDeposito); // este lo recibes del formulario
-            System.out.println("Comprobante guardado: " + nombreArchivoFinal);
+
         } else {
             throw new RuntimeException("Debe adjuntar un comprobante para registrar la venta.");
         }
@@ -262,7 +275,7 @@ public class VentaServices {
     ///registro para ventas con credito
     public DtoResponseOb<DtoIdVenta> RegistrarVentasCredito(DtoVentaCredito ventaCredito) {
         try {
-            return RegistrarVentaCreditoTransactional(ventaCredito);
+            return self.RegistrarVentaCreditoTransactional(ventaCredito);
         } catch (Exception e) {
             return new DtoResponseOb(false, e.getMessage(), null);
         }
@@ -350,9 +363,8 @@ public class VentaServices {
                 filtro.getPage(),
                 filtro.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "fecha"));
-        
-        
-        System.out.println("Buscador: "+filtro.getContextoBusqueda() + " Busqueda "+filtro.getBusqueda());
+
+        System.out.println("Buscador: " + filtro.getContextoBusqueda() + " Busqueda " + filtro.getBusqueda());
 
         if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornit
                 && !filtro.getBusqueda().trim().isEmpty()) {
@@ -367,8 +379,8 @@ public class VentaServices {
             LocalDateTime inicioDelDia = fecha.atStartOfDay();
             LocalDateTime finDelDia = fecha.atTime(LocalTime.MAX);
 
-            System.out.println("Se está ejecutando la accion de buscar por fecha: "+filtro.getFecha());
-            
+            System.out.println("Se está ejecutando la accion de buscar por fecha: " + filtro.getFecha());
+
             Page<Venta> listaventas = ventaRepository.findByFechaBetween(inicioDelDia, finDelDia, pageable);
             return toDtoHistorial(listaventas);
         } else if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo
@@ -392,31 +404,32 @@ public class VentaServices {
 
         if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornit
                 && !filtro.getBusqueda().trim().isEmpty()) {
-                
-                Page<Venta> listaventas = ventaRepository
-                        .findByIdTurnoAndNombreClienteContainingIgnoreCaseOrIdTurnoAndNitClienteContainingIgnoreCase(
-                                Long.valueOf(filtro.getWinParametro()), filtro.getBusqueda(),
-                                Long.valueOf(filtro.getWinParametro()), filtro.getBusqueda(), pageable);
-                return toDtoHistorial(listaventas);
+
+            Page<Venta> listaventas = ventaRepository
+                    .findByIdTurnoAndNombreClienteContainingIgnoreCaseOrIdTurnoAndNitClienteContainingIgnoreCase(
+                            Long.valueOf(filtro.getWinParametro()), filtro.getBusqueda(),
+                            Long.valueOf(filtro.getWinParametro()), filtro.getBusqueda(), pageable);
+            return toDtoHistorial(listaventas);
         } else if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha) {
             LocalDate fecha = LocalDate.parse(filtro.getFecha(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
             LocalDateTime inicioDelDia = fecha.atStartOfDay();
             LocalDateTime finDelDia = fecha.atTime(LocalTime.MAX);
-            
+
             Page<Venta> listaventas = ventaRepository.findByIdTurnoAndFechaBetween(
                     Long.valueOf(filtro.getWinParametro()), inicioDelDia, finDelDia, pageable);
             return toDtoHistorial(listaventas);
-        }if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo
-                && !filtro.getBusqueda().trim().isEmpty()){
+        }
+        if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo
+                && !filtro.getBusqueda().trim().isEmpty()) {
             Page<Venta> listaventas = ventaRepository.findByIdTurnoAndId(
-                        Long.valueOf(filtro.getWinParametro()),
-                        Long.valueOf(filtro.getBusqueda()), pageable);
-                return toDtoHistorial(listaventas);    
-        }else{
+                    Long.valueOf(filtro.getWinParametro()),
+                    Long.valueOf(filtro.getBusqueda()), pageable);
+            return toDtoHistorial(listaventas);
+        } else {
             Page<Venta> listaventas = ventaRepository.findByIdTurno(
-                        Long.valueOf(filtro.getWinParametro()), pageable);
-                return toDtoHistorial(listaventas);
+                    Long.valueOf(filtro.getWinParametro()), pageable);
+            return toDtoHistorial(listaventas);
         }
     }
 
@@ -426,24 +439,24 @@ public class VentaServices {
                 filtro.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "fecha"));
 
-        if(filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha) {
-            
+        if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadorfecha) {
+
             LocalDate fecha = LocalDate.parse(filtro.getFecha(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
             LocalDateTime inicioDelDia = fecha.atStartOfDay();
             LocalDateTime finDelDia = fecha.atTime(LocalTime.MAX);
 
             System.out.println("Se está ejecutando la accion de buscar por fecha");
-            
+
             Page<Venta> listaventas = ventaRepository.findByNitClienteAndFechaBetween(
                     filtro.getWinParametro(), inicioDelDia, finDelDia, pageable);
             return toDtoHistorial(listaventas);
-        } else if(filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo
-                && !filtro.getBusqueda().trim().isEmpty()){
+        } else if (filtro.getContextoBusqueda() == DtoFiltroHistorialVentas.ContextoBusqueda.buscadornorecibo
+                && !filtro.getBusqueda().trim().isEmpty()) {
             Page<Venta> listaventas = ventaRepository.findByNitClienteAndId(
-                    filtro.getWinParametro(), Long.valueOf(filtro.getBusqueda()),pageable);
+                    filtro.getWinParametro(), Long.valueOf(filtro.getBusqueda()), pageable);
             return toDtoHistorial(listaventas);
-        }else {
+        } else {
             Page<Venta> listaventas = ventaRepository.findByNitCliente(
                     filtro.getWinParametro(), pageable);
             return toDtoHistorial(listaventas);

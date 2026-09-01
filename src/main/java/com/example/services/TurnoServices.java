@@ -134,8 +134,10 @@ public class TurnoServices {
             return new DtoResponseOb<>(false, "¡El turno ya ha sido cerrado!", null);
         }
 
-        Turno turno = turnoRepository.findById(dtoCerrar.getIdTurno()).orElse(null);
-        turno.setUserCierre(dtoCerrar.getUserCierre());
+        Turno turno = turnoRepository.findById(dtoCerrar.getIdTurno())
+                .orElseThrow(() -> new RuntimeException("¡No hay un turno abierto!"));
+        
+        turno.setUserCierre(dtoCerrar.getUserCierre()); 
         turno.setFechaCierre(LocalDateTime.now());
 
         BigDecimal diferencia = dtoCerrar.getArqueo().subtract(turno.getSaldoFinal());
@@ -174,7 +176,7 @@ public class TurnoServices {
         Turno t = turnoRepository.findById(efectivo.getIdTurno()).orElse(null);
         
         if (t == null) {
-            return new DtoResponse(false, "El turno especificado no existe");
+            return new DtoResponse(false, "¡No hay un turno abierto!");
         }
         if (!t.getEstado().equalsIgnoreCase("Abierto")) {
             return new DtoResponse(false, "¡El turno está cerrado!");
@@ -191,22 +193,25 @@ public class TurnoServices {
             }
 
             t.setSalidas(t.getSalidas().add(efectivo.getImporte()));
-            message = "¡Retiro realizado existosamente!";
+            message = "¡Retiro realizado exitosamente!";
         }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Venta a credito")){
-            t.setVentaCredito(t.getVentas().add(efectivo.getImporte()));
-            message = "¡Venta a credito realizada existosamente!";
+            t.setVentaCredito(t.getVentaCredito().add(efectivo.getImporte()));
+            message = "¡Venta a credito realizada exitosamente!";
         }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Venta al contado")){
             t.setVentas(t.getVentas().add(efectivo.getImporte()));
-            message = "¡Venta al contado realizada existosamente!";
+            message = "¡Venta al contado realizada exitosamente!";
         }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Venta por deposito")){
-            t.setVentaDepositos(t.getVentas().add(efectivo.getImporte()));
-            message = "¡Venta por deposito realizada existosamente!";
+            t.setVentaDepositos(t.getVentaDepositos().add(efectivo.getImporte()));
+            message = "¡Venta por deposito realizada exitosamente!";
         }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Cobro de credito en efectivo")){
-            t.setVentaDepositos(t.getVentas().add(efectivo.getImporte()));
-            message = "¡Cobro de credito con en efectivo realizado existosamente!";
+            t.setCobroCreditoEfectivo(t.getCobroCreditoEfectivo().add(efectivo.getImporte()));
+            message = "¡Cobro de credito en efectivo realizado exitosamente!";
         }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Cobro de credito con deposito")){
-            t.setVentaDepositos(t.getVentas().add(efectivo.getImporte()));
-            message = "¡Cobro de credito con deposito realizado existosamente!";
+            t.setCobroCreditoDeposito(t.getCobroCreditoDeposito().add(efectivo.getImporte()));
+            message = "¡Cobro de credito con deposito realizado exitosamente!";
+        }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Reembolso")){
+            t.setReembolsos(t.getReembolsos().add(efectivo.getImporte()));
+            message = "¡Reembolso por devolucion realizada exitosamente!";
         }else{
             return new DtoResponse(false, "el tipo de movimiento no existe");
         }
@@ -214,7 +219,8 @@ public class TurnoServices {
                 .add(t.getIngresos())
                 .add(t.getVentas())
                 .add(t.getCobroCreditoEfectivo())
-                .subtract(t.getSalidas());
+                .subtract(t.getSalidas())
+                .subtract(t.getReembolsos());
         t.setSaldoFinal(saldoFinal);
         turnoRepository.save(t);
 

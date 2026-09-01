@@ -6,7 +6,6 @@ import com.example.DTO.DtoEfectivoCaja;
 import com.example.DTO.DtoFiltroHistorialabonos;
 import com.example.DTO.DtoId;
 import com.example.DTO.DtoIdPage;
-import com.example.DTO.DtoIdVenta;
 import com.example.DTO.DtoItemCredito;
 import com.example.DTO.DtoItemHistorialabonos;
 import com.example.DTO.DtoRegistrarAbono;
@@ -21,7 +20,6 @@ import com.example.domain.Abono;
 import com.example.domain.Cliente;
 import com.example.domain.Credito;
 import com.example.domain.Usuario;
-import com.example.domain.Venta;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -38,6 +36,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -53,6 +52,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class CreditoServices {
+
+    @Autowired
+    @Lazy
+    public CreditoServices self;
 
     @Autowired
     public CreditoRepository creditoRepository;
@@ -102,27 +105,15 @@ public class CreditoServices {
         }
 
         Pageable pageable = PageRequest.of(dto.getPage(), dto.getSize());
-        String estadoGeneral = "AL DIA";
-        BigDecimal deudaTotal = new BigDecimal(0.00);
 
         Page<Credito> pagCreditos = creditoRepository.findByIdClienteOrderByEstado(cliente.getId(), pageable);
 
-        List<Credito> creditos = creditoRepository.findByIdClienteAndEstadoNot(cliente.getId(), "PAGADO");
-
-        for (Credito credito : creditos) {
-
-            deudaTotal = deudaTotal.add(credito.getSaldoPendiente());
-            if ("VENCIDO".equalsIgnoreCase(credito.getEstado())) {
-                estadoGeneral = "VENCIDO";
-            } else if ("PENDIENTE".equalsIgnoreCase(credito.getEstado())
-                    && !estadoGeneral.equalsIgnoreCase("VENCIDO")) {
-                estadoGeneral = "PENDIENTE";
-            }
-        }
+        String estadoGeneral = creditoRepository.calcularEstadoGeneral(cliente.getId());
+        BigDecimal deudaTotal = creditoRepository.calcularDeudaTotal(cliente.getId());
 
         DtoCredito dtoCredito = new DtoCredito(cliente.getNombre(), cliente.getNit(),
                 deudaTotal, estadoGeneral, toItemCredito(pagCreditos));
-        System.out.println("id: " + dtoCredito.getNombreCliente() + " Saldo a pagar: " + deudaTotal + " Estado: " + estadoGeneral);
+
         return dtoCredito;
     }
 
@@ -139,9 +130,55 @@ public class CreditoServices {
                 ));
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public DtoResponseOb<DtoId> registrarAbonoPorDevolucion(Long idCredito, BigDecimal montoDevolucion, Long idTurno, Long idVendedor) {
+        Credito credito = creditoRepository.findById(idCredito)
+                .orElseThrow(() -> new RuntimeException("¡El crédito seleccionado no existe!"));
+
+        BigDecimal saldoPendiente = credito.getSaldoPendiente();
+
+        if (saldoPendiente.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("El crédito ya está pagado");
+        }
+
+        BigDecimal saldoAnterior = saldoPendiente;
+        BigDecimal aplicado = montoDevolucion.min(saldoPendiente);
+        BigDecimal nuevoSaldo = saldoPendiente.subtract(aplicado);
+
+        // Crear abono tipo devolución
+        Abono abono = new Abono();
+        abono.setIdCredito(idCredito);
+        abono.setIdCliente(credito.getIdCliente());
+        abono.setIdVenta(credito.getIdVenta());
+        abono.setFechaAbono(LocalDateTime.now());
+        abono.setMontoAbonado(aplicado);
+        abono.setSaldoAnterior(saldoAnterior);
+        abono.setNuevoSaldo(nuevoSaldo);
+        abono.setEstadoCredito(nuevoSaldo.compareTo(BigDecimal.ZERO) == 0 ? "PAGADO" : credito.getEstado());
+        abono.setIdVendedor(idVendedor);
+        abono.setFormaPago("DEVOLUCION");
+        abono = abonoRepository.save(abono);
+
+        credito.setSaldoPendiente(nuevoSaldo);
+        credito.setEstado(abono.getEstadoCredito());
+        creditoRepository.save(credito); 
+
+        // Si hay excedente → reembolso en efectivo
+        BigDecimal excedente = montoDevolucion.subtract(aplicado);
+        if (excedente.compareTo(BigDecimal.ZERO) > 0) {
+            turnoServices.ingresoRetiroEfectivo(new DtoEfectivoCaja(
+                    idTurno, "Reembolso", excedente,
+                    "Reembolso en efectivo por devolución del Recibo No." + credito.getIdVenta()
+            ));
+        }
+
+        return new DtoResponseOb<>(true, "Devolución aplicada exitosamente",
+                new DtoId(abono.getId()));
+    }
+
     public DtoResponseOb<DtoId> registrarAbonoEfectivo(DtoRegistrarAbono dtoAbono) {
         try {
-            return registrarAbonoEfectivoTransactional(dtoAbono);
+            return self.registrarAbonoEfectivoTransactional(dtoAbono);
         } catch (Exception e) {
             return new DtoResponseOb<>(false, e.getMessage(), null);
         }
@@ -219,7 +256,7 @@ public class CreditoServices {
 
     public DtoResponseOb<DtoId> registrarAbonoDeposito(DtoRegistrarAbono dtoAbono, MultipartFile comprobante) {
         try {
-            return registrarAbonoDepositoTransactional(dtoAbono, comprobante);
+            return self.registrarAbonoDepositoTransactional(dtoAbono, comprobante);
         } catch (Exception e) {
             return new DtoResponseOb<>(false, e.getMessage(), null);
         }

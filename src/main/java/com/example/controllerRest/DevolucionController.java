@@ -1,6 +1,9 @@
 package com.example.controllerRest;
 
 import com.example.DTO.DtoId;
+import com.example.DTO.DtoRegistrarDevolucion;
+import com.example.DTO.DtoResponse;
+import com.example.DTO.DtoResponseDevolucion;
 import com.example.DTO.DtoResponseOb;
 import com.example.DTO.DtoResumenDevolucion;
 import com.example.DTO.Dto_infoDevoluciones;
@@ -34,4 +37,17 @@ public class DevolucionController {
     public DtoResumenDevolucion resumenDevolucion(@RequestBody Dto_infoDevoluciones dto){
         return devolucionService.resumenDevolucion(dto);
     }
+    
+    @PostMapping("/registrarDevolucion")
+    public ResponseEntity<DtoResponseDevolucion> registrarDevolucion(@RequestBody DtoRegistrarDevolucion dto){
+
+        DtoResponseDevolucion response = devolucionService.registrarDevolucion(dto);
+        
+        if(!response.isSuccess()){
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    
 }
