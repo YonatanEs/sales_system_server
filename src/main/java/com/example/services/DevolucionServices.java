@@ -1,7 +1,12 @@
 package com.example.services;
 
+import com.example.DTO.DtoAnulacionRecibo;
+import com.example.DTO.DtoDetallesDevolucion;
+import com.example.DTO.DtoDevolucion;
 import com.example.DTO.DtoDevolverStock;
 import com.example.DTO.DtoEfectivoCaja;
+import com.example.DTO.DtoFiltroHistorialDevolucion;
+import com.example.DTO.DtoHistorialDevoluciones;
 import com.example.DTO.DtoId;
 import com.example.DTO.DtoRegistrarDevolucion;
 import com.example.DTO.DtoResponse;
@@ -10,6 +15,7 @@ import com.example.DTO.DtoResponseOb;
 import com.example.DTO.DtoResumenDevolucion;
 import com.example.DTO.Dto_infoDevoluciones;
 import com.example.DTO.ItemProductosDevoluciones;
+import com.example.Repository.AbonoRepository;
 import com.example.Repository.CreditoRepository;
 import com.example.Repository.DetallesDevolucionRepository;
 import com.example.Repository.DetallesDevolucion_lotesRepository;
@@ -17,6 +23,7 @@ import com.example.Repository.DetallesVentaRepository;
 import com.example.Repository.DetallesVenta_lotesRepository;
 import com.example.Repository.DevolucionRepository;
 import com.example.Repository.VentaRepository;
+import com.example.domain.Abono;
 import com.example.domain.Credito;
 import com.example.domain.DetallesDevolucion;
 import com.example.domain.DetallesVenta;
@@ -28,15 +35,21 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,6 +89,9 @@ public class DevolucionServices {
 
     @Autowired
     private TurnoServices turnoServices;
+    
+    @Autowired
+    private AbonoRepository abonoRepository;
 
     public DtoResponseOb<Dto_infoDevoluciones> infoDevolucion(DtoId dtoId) {
         Venta venta = ventaRepository.findById(dtoId.getId()).orElse(null);
@@ -207,6 +223,98 @@ public class DevolucionServices {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    public DtoResponse anularRecibo(DtoAnulacionRecibo dto) {
+        try {
+            return procesarAnulacion(dto);
+        } catch (Exception e) {
+            return new DtoResponse(false, e.getMessage());
+        }
+    }
+
+    private DtoResponse procesarAnulacion(DtoAnulacionRecibo dto) {
+        Venta venta = validarVenta(dto.getIdVenta());
+
+        //Validar la venta
+        if (!venta.getEstado().equals("Activa")) {
+            throw new RuntimeException("No se puede anular el Recibo");
+        }
+
+        //devolver el stock
+        DtoResponse respStock = anularStock(venta.getId());
+        if (!respStock.isSuccess()) {
+            throw new RuntimeException(respStock.getMessage());
+        }
+
+        //anular el ingreso de efectivo dependiendo del método de pago
+        DtoResponse respPago = anularMetodoPago(venta, dto.getIdTurno());
+        if (!respPago.isSuccess()) {
+            throw new RuntimeException(respPago.getMessage());
+        }
+
+        //cambiar el estado de las venta 
+        venta.setEstado("ANULADA");
+        ventaRepository.save(venta);
+        return new DtoResponse(true, "¡Anulacion del Recibo No."+venta.getId()+" realizado exitosamente!");
+    }
+
+    private DtoResponse anularStock(Long idVenta) {
+        List<Detallesventa_lotes> lotesVenta = dv_lotesRepository.findByIdVenta(idVenta);
+
+        if (lotesVenta.isEmpty()) {
+            return new DtoResponse(false, "No se encontraron lotes para la venta: " + idVenta);
+        }
+
+        for (Detallesventa_lotes dv_lote : lotesVenta) {
+            BigDecimal cantidad = dv_lote.getCantidad();
+
+            if (cantidad == null || cantidad.compareTo(BigDecimal.ZERO) <= 0) {
+                continue; // nada que devolver
+            }
+
+            // Revertir stock al mismo lote de donde salió
+            DtoResponse response = loteServices.devolverStock(
+                    new DtoDevolverStock(dv_lote.getIdLote(), cantidad, "Anulación de factura")
+            );
+
+            if (!response.isSuccess()) {
+                return response; // si falla, corto el proceso
+            }
+        }
+
+        return new DtoResponse(true, "Stock revertido correctamente por anulación");
+    }
+
+    private DtoResponse anularMetodoPago(Venta venta, Long idTurno) {
+        String metodo = venta.getMetodoPago();
+        DtoResponse response;
+        if (metodo.equals("Contado")) {
+            response = turnoServices.ingresoRetiroEfectivo(
+                    new DtoEfectivoCaja(idTurno, "Anulacion", venta.getTotal(),
+                            "Reembolso de efectivo por anulación de Recibo No." + venta.getId()));
+        } else if (metodo.equals("Credito")) {
+            Credito credito = creditoRepository.findByIdVenta(venta.getId()).orElse(null);
+            if(credito==null){
+                return new DtoResponse(false, "Ha ocurrido un error con el crédito");
+            }
+            
+            List<Abono> abonos = abonoRepository.findByIdCredito(credito.getId());
+            if(!abonos.isEmpty()){
+                return new DtoResponse(false, "La anulación no es posible: el recibo ya tiene abonos registrados."
+                        + " Debe realizar una devolución total.");
+            }
+            
+            credito.setSaldoPendiente(new BigDecimal("0.00"));
+            credito.setEstado("ANULADO");
+            creditoRepository.save(credito);
+            turnoServices.MovientoAnulacionCredito(idTurno, venta.getId(), venta.getTotal());
+            response = new DtoResponse(true, "Credito anulacion con exito");
+        } else {
+            response = turnoServices.AnularDepositoVenta(venta.getIdTurno(), venta.getTotal());
+        }
+        return response;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public DtoResponseDevolucion registrarDevolucion(DtoRegistrarDevolucion dto) {
         try {
             return procesarDevolucion(dto);
@@ -232,13 +340,13 @@ public class DevolucionServices {
 
         procesarStock(venta, listaBD);
 
-        registrarDevolucionYDetalles(devolucion, listaBD, estadoRecibo);
+        registrarDevolucionYDetalles(totalADevolver, devolucion, listaBD, estadoRecibo, venta.getNombreCliente(), venta.getNitCliente());
 
         actualizarEstadoVenta(venta, estadoRecibo);
 
         boolean devolucionTotal = estadoRecibo.equals("DEVUELTA");
-        return new DtoResponseDevolucion(true, "Devolución exitosa. \nMétodo de devolución: " +
-                metodoDevolucion, devolucionTotal);
+        return new DtoResponseDevolucion(true, "Devolución exitosa. \nMétodo de devolución: "
+                + metodoDevolucion, devolucionTotal);
     }
 
     private Venta validarVenta(Long idVenta) {
@@ -440,15 +548,18 @@ public class DevolucionServices {
         return new DtoResponse(true, "Devolución lote actualizada correctamente");
     }
 
-    private void registrarDevolucionYDetalles(DtoRegistrarDevolucion devolucion,
-            List<ItemProductosDevoluciones> listaBD, String estadoRecibo) {
+    private void registrarDevolucionYDetalles(BigDecimal totalADevolver, DtoRegistrarDevolucion devolucion,
+            List<ItemProductosDevoluciones> listaBD, String estadoRecibo, String nombreCliente, String nitCliente) {
 
         Devolucion dev = new Devolucion();
         dev.setIdVenta(devolucion.getIdVenta());
         dev.setIdVendedor(devolucion.getIdVendedor());
         dev.setFecha(LocalDateTime.now());
+        dev.setNombreCliente(nombreCliente);
+        dev.setNitCliente(nitCliente);
         dev.setMotivo(devolucion.getMotivo());
         dev.setTipo(estadoRecibo.toUpperCase());
+        dev.setTotalDevuelto(totalADevolver);
         dev = devolucionRepository.save(dev);
 
         for (ItemProductosDevoluciones itemBD : listaBD) {
@@ -473,7 +584,125 @@ public class DevolucionServices {
         ventaRepository.save(venta);
     }
 
+    public Page<DtoHistorialDevoluciones> listarHistorialGeneralDevoluciones(DtoFiltroHistorialDevolucion filtro) {
+        Pageable pageable = buildPageable(filtro);
+
+        switch (filtro.getBuscador().toUpperCase()) {
+            case "NIT":
+                if (!filtro.getBusqueda().isEmpty()) {
+                    return toDtoHistorial(
+                            devolucionRepository.findByNombreClienteContainingIgnoreCaseOrNitClienteContainingIgnoreCase(
+                                    filtro.getBusqueda(), filtro.getBusqueda(), pageable));
+                }
+                break;
+            case "FECHA":
+                LocalDate fecha = LocalDate.parse(filtro.getBusqueda(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                return toDtoHistorial(
+                        devolucionRepository.findByFechaBetween(fecha.atStartOfDay(), fecha.atTime(LocalTime.MAX), pageable));
+            case "RECIBO":
+                if (!filtro.getBusqueda().isEmpty()) {
+                    return toDtoHistorial(
+                            devolucionRepository.findByIdVenta(Long.valueOf(filtro.getBusqueda()), pageable));
+                }
+                break;
+        }
+        return toDtoHistorial(devolucionRepository.findAll(pageable));
+    }
+
+    public Page<DtoHistorialDevoluciones> listarHistorialTurnoDevoluciones(DtoFiltroHistorialDevolucion filtro) {
+        Pageable pageable = buildPageable(filtro);
+
+        switch (filtro.getBuscador().toUpperCase()) {
+            case "NIT":
+                if (!filtro.getBusqueda().isEmpty()) {
+                    return toDtoHistorial(
+                            devolucionRepository.findByIdTurnoAndNombreClienteContainingIgnoreCaseOrIdTurnoAndNitClienteContainingIgnoreCase(
+                                    Long.valueOf(filtro.getVariableWindow()), filtro.getBusqueda(),
+                                    Long.valueOf(filtro.getVariableWindow()), filtro.getBusqueda(), pageable));
+                }
+                break;
+            case "FECHA":
+                LocalDate fecha = LocalDate.parse(filtro.getBusqueda(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                return toDtoHistorial(
+                        devolucionRepository.findByIdTurnoAndFechaBetween(
+                                Long.valueOf(filtro.getVariableWindow()), fecha.atStartOfDay(), fecha.atTime(LocalTime.MAX), pageable));
+            case "RECIBO":
+                if (!filtro.getBusqueda().isEmpty()) {
+                    return toDtoHistorial(
+                            devolucionRepository.findByIdTurnoAndId(
+                                    Long.valueOf(filtro.getVariableWindow()), Long.valueOf(filtro.getBusqueda()), pageable));
+                }
+                break;
+        }
+
+        return toDtoHistorial(
+                devolucionRepository.findByIdTurno(Long.valueOf(filtro.getVariableWindow()), pageable));
+    }
+
+    public Page<DtoHistorialDevoluciones> listarHistorialClienteDevoluciones(DtoFiltroHistorialDevolucion filtro) {
+        Pageable pageable = buildPageable(filtro);
+
+        switch (filtro.getBuscador().toUpperCase()) {
+            case "FECHA":
+                LocalDate fecha = LocalDate.parse(filtro.getBusqueda(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                return toDtoHistorial(
+                        devolucionRepository.findByNitClienteAndFechaBetween(
+                                filtro.getVariableWindow(), fecha.atStartOfDay(), fecha.atTime(LocalTime.MAX), pageable));
+            case "RECIBO":
+                if (!filtro.getBusqueda().isEmpty()) {
+                    return toDtoHistorial(
+                            devolucionRepository.findByNitClienteAndId(
+                                    filtro.getVariableWindow(), Long.valueOf(filtro.getBusqueda()), pageable));
+                }
+                break;
+        }
+
+        return toDtoHistorial(
+                devolucionRepository.findByNitCliente(filtro.getVariableWindow(), pageable));
+    }
+
+    private Pageable buildPageable(DtoFiltroHistorialDevolucion filtro) {
+        return PageRequest.of(
+                filtro.getPage(),
+                filtro.getSize(),
+                Sort.by(Sort.Direction.DESC, "fecha")
+        );
+    }
+
+    public Page<DtoHistorialDevoluciones> toDtoHistorial(Page<Devolucion> devoluciones) {
+        return devoluciones.map(DtoHistorialDevoluciones::new);
+    }
+
     private boolean dentroDePlazo(LocalDate fecha, int limiteDias) {
         return ChronoUnit.DAYS.between(fecha, LocalDate.now()) <= limiteDias;
+    }
+
+    public DtoDevolucion devolucionDetalles(DtoId dto) {
+        Optional<Devolucion> OptDev = devolucionRepository.findById(dto.getId());
+        if (OptDev.isEmpty()) {
+            return null;
+        }
+        Devolucion devolucion = OptDev.get();
+
+        DtoDevolucion dtoDevolucion = new DtoDevolucion();
+
+        dtoDevolucion.setIdDevolucion(devolucion.getId());
+        dtoDevolucion.setIdVenta(devolucion.getIdVenta());
+        dtoDevolucion.setCliente(devolucion.getNombreCliente());
+        dtoDevolucion.setNit(devolucion.getNitCliente());
+        dtoDevolucion.setFecha(devolucion.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm")));
+        dtoDevolucion.setTotalDevolver(devolucion.getTotalDevuelto());
+        dtoDevolucion.setMotivo(devolucion.getMotivo());
+
+        List<DetallesDevolucion> detallesDevolucion = detallesdevolucionRepository.findByIdDevolucion(dto.getId());
+        dtoDevolucion.setDetallesDevolucion(toDtoDetallesDevolucion(detallesDevolucion));
+
+        return dtoDevolucion;
+    }
+
+    private List<DtoDetallesDevolucion> toDtoDetallesDevolucion(List<DetallesDevolucion> detalles) {
+        return detalles.stream()
+                .map(DtoDetallesDevolucion::new) // usa el constructor directamente
+                .toList();
     }
 }

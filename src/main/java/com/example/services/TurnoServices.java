@@ -18,6 +18,7 @@ import com.example.domain.MovimientosTurno;
 import com.example.domain.Turno;
 import com.example.domain.UserTurnos;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -136,8 +137,8 @@ public class TurnoServices {
 
         Turno turno = turnoRepository.findById(dtoCerrar.getIdTurno())
                 .orElseThrow(() -> new RuntimeException("¡No hay un turno abierto!"));
-        
-        turno.setUserCierre(dtoCerrar.getUserCierre()); 
+
+        turno.setUserCierre(dtoCerrar.getUserCierre());
         turno.setFechaCierre(LocalDateTime.now());
 
         BigDecimal diferencia = dtoCerrar.getArqueo().subtract(turno.getSaldoFinal());
@@ -174,7 +175,7 @@ public class TurnoServices {
 
     public DtoResponse ingresoRetiroEfectivo(DtoEfectivoCaja efectivo) {
         Turno t = turnoRepository.findById(efectivo.getIdTurno()).orElse(null);
-        
+
         if (t == null) {
             return new DtoResponse(false, "¡No hay un turno abierto!");
         }
@@ -186,33 +187,52 @@ public class TurnoServices {
         if (efectivo.getTipoMovimiento().equalsIgnoreCase("Ingreso")) {
             t.setIngresos(t.getIngresos().add(efectivo.getImporte()));
             message = "¡Ingreso realizado existosamente!";
-        } else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Retiro")){ 
-            if (efectivo.getImporte().compareTo(t.getSaldoFinal()) > 0) {
+        } else if (efectivo.getTipoMovimiento().equalsIgnoreCase("Retiro")) {
+            BigDecimal efectivoDisponible = getEfectivoDisponible(t);
+
+            if (efectivo.getImporte().compareTo(efectivoDisponible) > 0) {
                 return new DtoResponse(false, "¡No se puede realizar el retiro! El importe solicitado (Q. "
-                        + efectivo.getImporte() + ") supera el saldo actual en caja (Q. " + t.getSaldoFinal() + ").");
+                        + efectivo.getImporte() + ") supera el efectivo disponible en caja (Q. " + efectivoDisponible + ").");
             }
 
             t.setSalidas(t.getSalidas().add(efectivo.getImporte()));
             message = "¡Retiro realizado exitosamente!";
-        }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Venta a credito")){
+        } else if (efectivo.getTipoMovimiento().equalsIgnoreCase("Venta a credito")) {
             t.setVentaCredito(t.getVentaCredito().add(efectivo.getImporte()));
             message = "¡Venta a credito realizada exitosamente!";
-        }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Venta al contado")){
+        } else if (efectivo.getTipoMovimiento().equalsIgnoreCase("Venta al contado")) {
             t.setVentas(t.getVentas().add(efectivo.getImporte()));
             message = "¡Venta al contado realizada exitosamente!";
-        }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Venta por deposito")){
+        } else if (efectivo.getTipoMovimiento().equalsIgnoreCase("Venta por deposito")) {
             t.setVentaDepositos(t.getVentaDepositos().add(efectivo.getImporte()));
             message = "¡Venta por deposito realizada exitosamente!";
-        }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Cobro de credito en efectivo")){
+        } else if (efectivo.getTipoMovimiento().equalsIgnoreCase("Cobro de credito en efectivo")) {
             t.setCobroCreditoEfectivo(t.getCobroCreditoEfectivo().add(efectivo.getImporte()));
             message = "¡Cobro de credito en efectivo realizado exitosamente!";
-        }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Cobro de credito con deposito")){
+        } else if (efectivo.getTipoMovimiento().equalsIgnoreCase("Cobro de credito con deposito")) {
             t.setCobroCreditoDeposito(t.getCobroCreditoDeposito().add(efectivo.getImporte()));
             message = "¡Cobro de credito con deposito realizado exitosamente!";
-        }else if(efectivo.getTipoMovimiento().equalsIgnoreCase("Reembolso")){
+        } else if (efectivo.getTipoMovimiento().equalsIgnoreCase("Reembolso")) {
+            BigDecimal efectivoDisponible = getEfectivoDisponible(t);
+
+            if (efectivo.getImporte().compareTo(efectivoDisponible) > 0) {
+                return new DtoResponse(false, "¡No se puede realizar el reembolso! El importe solicitado (Q. "
+                        + efectivo.getImporte() + ") supera el efectivo disponible en caja (Q. " + efectivoDisponible + ").");
+            }
+
             t.setReembolsos(t.getReembolsos().add(efectivo.getImporte()));
-            message = "¡Reembolso por devolucion realizada exitosamente!";
-        }else{
+            message = "¡Reembolso por devolución realizado exitosamente!";
+        } else if (efectivo.getTipoMovimiento().equalsIgnoreCase("Anulacion")) {
+            BigDecimal efectivoDisponible = getEfectivoDisponible(t);
+
+            if (efectivo.getImporte().compareTo(efectivoDisponible) > 0) {
+                return new DtoResponse(false, "¡No se puede realizar el reembolso! El importe solicitado (Q. "
+                        + efectivo.getImporte() + ") supera el efectivo disponible en caja (Q. " + efectivoDisponible + ").");
+            }
+
+            t.setReembolsos(t.getReembolsos().add(efectivo.getImporte()));
+            message = "¡Reembolso por anulacion de recibo realizado exitosamente!";
+        } else {
             return new DtoResponse(false, "el tipo de movimiento no existe");
         }
         BigDecimal saldoFinal = t.getSaldoInicial()
@@ -233,6 +253,54 @@ public class TurnoServices {
         movimientosTurnoRepository.save(mov);
 
         return new DtoResponse(true, message);
+    }
+
+    private BigDecimal getEfectivoDisponible(Turno t) {
+        if (t == null) {
+            return BigDecimal.ZERO;
+        }
+
+        return t.getIngresos()
+                .add(t.getVentas()) // ventas al contado
+                .add(t.getCobroCreditoEfectivo()) // cobros de crédito en efectivo
+                .subtract(t.getSalidas()) // retiros
+                .subtract(t.getReembolsos());      // reembolsos en efectivo
+    }
+    
+    public DtoResponse MovientoAnulacionCredito(Long idTurno, Long idRecibo, BigDecimal totalAnulacion){
+        MovimientosTurno mov = new MovimientosTurno();
+        mov.setIdTurno(idTurno);
+        mov.setFecha(LocalDateTime.now());
+        mov.setTipo("Anulacion de crédito");
+        mov.setConcepto("Anulacion de crédito por el Recibo No."+idRecibo);
+        mov.setImporte(totalAnulacion);
+        movimientosTurnoRepository.save(mov);
+        return new DtoResponse(true, "Registro de la anulacion de credito exitosa");
+    }
+
+    public DtoResponse AnularDepositoVenta(Long idTurno, BigDecimal totalDevolucion) {
+        Turno t = turnoRepository.findById(idTurno).orElse(null);
+        if (t == null) {
+            return new DtoResponse(false, "Ha ocurrido un error, el turno no existe!");
+        }
+
+        BigDecimal depositos = t.getVentaDepositos();
+        if (depositos.compareTo(totalDevolucion) < 0) {
+            return new DtoResponse(false, "La devolución excede el monto disponible en depósitos");
+        }
+
+        t.setVentaDepositos(totalDevolucion.subtract(depositos));
+        turnoRepository.save(t);
+
+        MovimientosTurno mov = new MovimientosTurno();
+        mov.setIdTurno(idTurno);
+        mov.setFecha(LocalDateTime.now());
+        mov.setTipo("Reembolso de Deposito");
+        mov.setConcepto("Reembolso por anulacion de venta con Deposito");
+        mov.setImporte(totalDevolucion);
+        movimientosTurnoRepository.save(mov);
+
+        return new DtoResponse(true, "Reembolso por deposito realizado correctamente");
     }
 
     public List<MovimientosTurno> listarMovimientosTurnos(ValorRequestAndId val) {

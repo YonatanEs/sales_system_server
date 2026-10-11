@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface DetallesVenta_lotesRepository extends JpaRepository<Detallesventa_lotes, Long>{
     
     List<Detallesventa_lotes> findByIdVentaAndIdProducto(Long idVenta, Long idProducto);
-   
+    List<Detallesventa_lotes> findByIdVenta(Long idVenta);
 }
